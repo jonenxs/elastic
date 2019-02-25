@@ -1,0 +1,70 @@
+# 倒排索引
+DELETE my_index
+
+PUT my_index
+{
+  "mappings" : {
+    "doc" : {
+      "properties": {
+        "cookie" : {
+          "type": "text",
+          "index": false
+        }
+      }  
+    }
+  }
+}
+
+PUT my_index/doc/1
+{
+  "cookie" : "name=tom"
+}
+
+GET my_index/_search
+{
+  "query": {
+    "match": {
+      "cookie": "name"
+    }
+  }
+}
+
+GET test/_search
+
+POST test/doc?refresh=true
+{"title":"noble warriors"}
+
+POST test/doc?refresh=true
+{"title": "nobel prize"}
+
+POST test/doc?refresh=true
+{"title": "noble hello prize"}
+
+POST test/doc?refresh=true
+{"title": "nobel prize hello"}
+
+POST test/doc?refresh=true
+{"title": "noebl prize"}
+
+POST test/_analyze
+{
+  "field": "title.trigram",
+  "text":"nobel prize"
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
