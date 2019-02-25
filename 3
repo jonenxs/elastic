@@ -1,0 +1,228 @@
+#创建mapping的建议过程
+
+#1.直接加入文档，由es自定创建
+PUT my_product_index/doc/1
+{
+  "referrer": "-",
+  "response_code": "200",
+  "remote_ip": "171.221.139.157",
+  "method": "POST",
+  "user_name": "-",
+  "http_version": "1.1",
+  "body_sent": {
+    "bytes": "0"
+  },
+  "url": "/analyzeVideo"
+}
+
+#2.删除es创建的
+DELETE my_product_index 
+
+#3.复制es自动创建的，并做修改
+PUT my_product_index
+{
+  "mappings": {
+    "doc": {
+      "dynamic_templates": [
+        {
+          "strings": {
+            "match_mapping_type": "string",
+            "mapping": {
+              "type": "keyword"
+            }
+          }
+        }
+      ],
+      "properties": {
+        "body_sent": {
+          "properties": {
+            "bytes": {
+              "type": "long"
+            }
+          }
+        },
+        "url": {
+          "type": "text"
+        }
+      }
+    }
+  }
+}
+
+GET my_product_index/_mapping
+
+#动态模板 dynamic template
+
+DELETE test_index
+
+PUT test_index
+{
+  "mappings": {
+    "doc" : {
+      "dynamic_templates" : [
+          {
+            "strings" : {
+              "match_mapping_type" : "string",
+              "mapping" : {
+                "type" : "keyword"
+              }
+            }
+          }
+        ]
+    }
+  }
+}
+
+PUT test_index/doc/1
+{
+  "name" : "tom"
+}
+
+GET test_index/_mapping
+
+GET test_index/_search
+
+DELETE test_index
+
+PUT test_index
+{
+  "mappings": {
+    "doc": {
+      "dynamic_templates": [
+        {
+          "message_as_text": {
+            "match_mapping_type": "string",
+            "match":   "message*",
+            "mapping": {
+              "type": "text"
+            }
+          }
+        }
+      ]
+    }
+  }
+}
+
+PUT test_index/doc/1
+{
+  "name" : "tom",
+  "message_info" : "I'm not a good boy"
+}
+
+GET test_index/_mapping
+
+#空值处理
+DELETE my_index
+
+PUT my_index
+{
+  "mappings": {
+    "my_type": {
+      "properties" :{
+        "status_code" : {
+          "type" : "keyword",
+          "null_value" : "NULL"
+        }
+      }
+    }
+  }
+}
+
+PUT my_index/my_type/1
+{
+  "status_code" : null
+}
+
+PUT my_index/my_type/2
+{
+  "status_code": [] 
+}
+
+GET my_index/_search
+{
+  "query": {
+    "term": {
+      "status_code": "NULL" 
+    }
+  }
+}
+
+GET my_index/my_type/2
+
+#index是否建立索引
+
+DELETE my_index
+
+PUT my_index
+{
+  "mappings": {
+    "doc": {
+      "properties": {
+        "cookie": {
+          "type": "text",
+          "index": false
+        }
+      }
+    }
+  }
+}
+
+PUT my_index/doc/1
+{
+  "cookie":"name=alfred"
+}
+
+#没有建立索引的字段无法用于查询
+GET my_index/_search
+{
+  "query":{
+    "match": {
+      "cookie": "name"
+    }
+  }
+}
+
+#copy_to 字段复制
+
+DELETE my_index
+
+PUT my_index
+{
+  "mappings": {
+    "doc": {
+      "properties": {
+        "first_name": {
+          "type": "text",
+          "copy_to": "full_name" 
+        },
+        "last_name": {
+          "type": "text",
+          "copy_to": "full_name" 
+        },
+        "full_name": {
+          "type": "text"
+        }
+      }
+    }
+  }
+}
+
+PUT my_index/doc/1
+{
+  "first_name": "John",
+  "last_name": "Smith"
+}
+
+GET my_index/_search
+{
+  "query": {
+    "match": {
+      "full_name": { 
+        "query": "John Smith",
+        "operator": "and"
+      }
+    }
+  }
+}
+
+GET my_index/_search
