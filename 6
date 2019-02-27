@@ -1,0 +1,301 @@
+DELETE test_search_relevance
+
+POST test_search_relevance/doc
+{
+  "name":"hello"
+}
+
+POST test_search_relevance/doc
+{
+  "name":"hello,world"
+}
+POST test_search_relevance/doc
+{
+  "name":"hello,world!a beautiful world"
+}
+
+
+GET test_search_relevance/_search
+
+GET test_search_relevance
+
+GET test_search_relevance/_search
+{
+  "explain": false, 
+  "query": {
+    "match":{
+      "name":"hello"
+    }
+  }
+}
+
+#除了可以将shard设置为1之外，也可以使用 dfs_query_then_fetch 的查询方式解决相关性算分问题,在拿到所有文档后，重新计算相关性得分
+GET test_search_relevance/_search?search_type=dfs_query_then_fetch
+{
+  "query": {
+    "match":{
+      "name":"hello"
+    }
+  }
+}
+
+# sorting
+
+# score is null here 默认按照相关性算分进行排序，若指定了排序字段，则不会进行算分，因为已经没有意义了
+GET test_search_index/_search
+{
+  "query":{
+    "match": {
+      "username": "alfred"
+    }
+  },
+  "sort":{
+    "birth":"desc"
+  }
+}
+
+#当然也可以在按照算分进行排序，这样就可以算分了
+GET test_search_index/_search
+{
+  "query":{
+    "match": {
+      "username": "alfred"
+    }
+  },
+  "sort": [
+    {
+      "birth": "desc"
+    },
+    {
+      "_score": "desc"
+    },
+    {
+      "_doc": "desc"
+    }
+  ]
+}
+
+PUT test_search_index/doc/0
+{
+  "username":"aaa"
+}
+
+DELETE test_search_index/doc/2
+
+GET test_search_index
+
+GET test_search_index/_search
+{
+  "sort": [
+    {
+      "username": "asc"
+    }
+  ]
+}
+
+GET test_search_index/_search
+{
+  "sort": [
+    {
+      "username": "desc"
+    },
+    {
+      "_id": "desc"
+    }
+  ]
+}
+
+DELETE test_search_index/doc/5
+
+PUT test_search_index/doc/5
+{
+  "username":"alfred junior zoo"
+}
+
+DELETE test_search_index/doc/5
+
+GET test_search_index/_search
+{
+  "sort":{
+    "username.keyword":"desc"
+  }
+}
+
+
+#排序的实质是对原始内容排序的过程，倒排索引无法起到作用，要用到正排索引，默认是不能对text字段进行排序的可以通过以下两种方式解决
+# fielddata（默认禁用）搜索时创建 ，在jvm中，可以随时开启和关闭，一般在聚合分析时开启，开启后是对分词后的term做排序，结果可能与预期不同，按照排序值最大的term进行排序
+PUT test_search_index/_mapping/doc
+{
+  "properties": {
+    "job":{
+      "type":"text",
+      "fielddata": true
+    }
+  }
+}
+
+# error when enable fielddata in other type
+PUT test_search_index/_mapping/doc
+{
+  "properties": {
+    "username":{
+      "type":"text",
+      "fielddata": false
+    },
+    "age":{
+      "type":"long",
+      "fielddata": true
+    }
+  }
+}
+
+GET test_search_index/
+
+
+# doc values（默认启用，除了 text字段）存储了 文档id 和字段值，索引时创建，在磁盘上，在创建mapping时可以指定关闭，但是后期再次开启时，需要重建索引
+DELETE test_doc_values
+
+PUT test_doc_values
+
+GET test_doc_values
+
+PUT test_doc_values/_mapping/doc
+{
+  "properties": {
+    "username": {
+      "type": "keyword",
+      "doc_values": true
+    },
+    "hobby": {
+      "type": "keyword"
+    }
+  }
+}
+
+PUT test_doc_values1/
+{
+  "mappings": {
+    "doc": {
+      "properties": {
+        "username": {
+          "type": "keyword",
+          "doc_values": false
+        }
+      }
+    }
+  }
+}
+
+
+
+PUT test_doc_values/doc/1
+{
+  "username":"alfred",
+  "hobby":"basketball"
+}
+
+GET test_doc_values/_search
+{
+  "sort":"username"
+}
+
+GET test_doc_values/_search
+{
+  "sort":"hobby"
+}
+
+
+# can be used to get original field value for not stored field
+PUT test_search_index/_mapping/doc
+{
+  "properties": {
+    "username":{
+      "type":"text",
+      "fielddata": true
+    }
+  }
+}
+
+GET test_search_index/_search
+{
+  "docvalue_fields": [
+    "username",
+    "username.keyword",
+    "age"
+  ]
+}
+
+PUT test_search_index/_mapping/doc
+{
+  "properties": {
+    "username":{
+      "type":"text",
+      "fielddata": true
+    }
+  }
+}
+
+
+# pagination 分页
+GET test_search_index/_search
+{
+  "from":4,
+  "size":2
+}
+
+#total_page=(total+page_size-1)/page_size
+# 深度分页问题 页数越深，处理文档越多，占用内存越大，耗时越长，应尽量避免深度分页，es通过 index.max-result_window限定最多到10000条数据
+GET test_search_index/_search
+{
+  "from":10000,
+  "size":2
+}
+
+
+# scroll
+GET test_search_index/_search?scroll=5m
+{
+  "size":1
+}
+
+
+GET _search/scroll
+GET test_search_index/_search
+
+# new doc can not be searched
+PUT test_search_index/doc/10
+{
+  "username":"doc10"
+}
+
+
+DELETE test_search_index/doc/10
+
+POST _search/scroll
+{
+  "scroll" : "5m", 
+  "scroll_id": "DXF1ZXJ5QW5kRmV0Y2gBAAAAAAAAFdAWMWZ3S0c1TWJUN0dMZnBfa2NBYmEtZw=="
+}
+
+DELETE _search/scroll/_all
+
+# search_after
+GET test_search_index/_search
+{
+  "size":1,
+  "sort":{
+    "age":"desc",
+    "_id":"desc"
+  }
+}
+
+
+GET test_search_index/_search
+{
+  "size":1,
+  "search_after":[23,"4"],
+  "sort":{
+    "age":"desc",
+    "_id":"desc"
+  }
+}
