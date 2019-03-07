@@ -27,35 +27,38 @@ GET test_search_index
 
 GET test_search_index/_search?q=username:alfred
 
+# 匹配 username 为 alfred 以及所有字段为 way的
 GET test_search_index/_search?q=username:alfred way
 {
   "profile":true
 }
 
-
+# 匹配 username 为 alfred way 的，不分词
 GET test_search_index/_search?q=username:"alfred way"
 {
   "profile":true
 }
-
+# 匹配 username 为 alfred 或者为 way的，分词
 GET test_search_index/_search?q=username:(alfred way)
 {
   "profile":true
 }
 
-
+# 匹配 username有 alfred 而且其它字段也有 way的
 GET test_search_index/_search?q=username:alfred AND way
 {
   "profile":true
 }
 
+# 匹配 username 既有 alfred 又有 way
 GET test_search_index/_search?q=username:(alfred AND way)
 {
   "profile":true
 }
 
+# 匹配 username 有 alfred 但没有 way
 GET test_search_index/_search?q=username:(alfred NOT way)
-
+# + 与and 一样，但是需要转义为 %2B ,下面的会被翻译为或操作
 GET test_search_index/_search?q=username:(alfred +way)
 {
   "profile":true
@@ -86,6 +89,7 @@ GET test_search_index/_search?q=username:alfd~2
 
 GET test_search_index/_search?q=job:"java engineer"
 
+# 容差为一个单词
 GET test_search_index/_search?q=job:"java engineer"~1
 
 
@@ -330,7 +334,7 @@ GET test_search_index/_search
   }
 }
 
-# bool query 由一个或多个布尔子句组成 filter 只过滤符合条件的，不记得分 must 必须包含的条件 计算得分 must_not 必须不包含的条件 should 可以符合的条件 会影响得分
+# bool query 由一个或多个布尔子句组成 filter 只过滤符合条件的，不记 得分 must 必须包含的条件 计算得分 must_not 必须不包含的条件 should 可以符合的条件 会影响得分
 GET test_search_index/_search
 {
   "query": {
@@ -558,9 +562,3 @@ GET test_search_index/_search
     "excludes": "birth"
   }
 }
-
-
-
-
-
-
