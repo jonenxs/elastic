@@ -1,0 +1,752 @@
+# aggregation
+POST test_search_index/doc/_bulk
+{"index":{"_id":"1"}}
+{"username":"alfred way","job":"java engineer","age":18,"birth":"1990-01-02","isMarried":false,"salary":10000}
+{"index":{"_id":"2"}}
+{"username":"tom","job":"java senior engineer","age":28,"birth":"1980-05-07","isMarried":true,"salary":30000}
+{"index":{"_id":"3"}}
+{"username":"lee","job":"ruby engineer","age":22,"birth":"1985-08-07","isMarried":false,"salary":15000}
+{"index":{"_id":"4"}}
+{"username":"Nick","job":"web engineer","age":23,"birth":"1989-08-07","isMarried":false,"salary":8000}
+{"index":{"_id":"5"}}
+{"username":"Niko","job":"web engineer","age":18,"birth":"1994-08-07","isMarried":false,"salary":5000}
+{"index":{"_id":"6"}}
+{"username":"Michell","job":"ruby engineer","age":26,"birth":"1987-08-07","isMarried":false,"salary":12000}
+
+GET test_search_index
+
+GET test_search_index/doc/_search
+
+# 查询每个工作对应的人数 terms在这里为分组的意思
+GET test_search_index/_search
+{
+  "size":1,
+  "from":2,
+  
+  "aggs": {
+    "people_per_job": {
+      "terms": {
+        "field": "job.keyword"
+      }
+    }
+  }
+}
+
+# 先按 job分组（terms），然后计算每个组内平均(avg)工资
+GET test_search_index/_search
+{
+  "size": 0,
+  "aggs": {
+    "people_per_job": {
+      "terms": {
+        "field": "job.keyword"
+      }
+    },
+    "avg_salary":{
+      "avg": {
+        "field": "salary"
+      }
+    }
+  }
+}
+
+# 查询年龄最小（min）是多少岁
+GET test_search_index/_search
+{
+  "size": 0,
+  "aggs":{
+    "min_age":{
+      "min":{
+        "field":"age"
+      }
+    }
+  }
+}
+
+# 查询年龄最大（max）是多少岁
+GET test_search_index/_search
+{
+  "size": 0,
+  "aggs":{
+    "max_age":{
+      "max": {
+        "field": "age"
+      }
+    }
+  }
+}
+
+# 查询年龄平均（avg）是多少岁
+GET test_search_index/_search
+{
+  "size": 0,
+  "aggs":{
+    "avg_age":{
+      "avg": {
+        "field": "age"
+      }
+    }
+  }
+}
+
+# 查询年龄共（sum）是多少岁
+GET test_search_index/_search
+{
+  "size":0,
+  "aggs":{
+    "sum_age":{
+      "sum": {
+        "field": "age"
+      }
+    }
+  }
+}
+
+# 也可以同时把所有计算值都一起算出来
+GET test_search_index/_search
+{
+  "size": 0,
+  "aggs": {
+    "min_age": {
+      "min": {
+        "field": "age"
+      }
+    },
+    "max_age": {
+      "max": {
+        "field": "age"
+      }
+    },
+    "avg_age": {
+      "avg": {
+        "field": "age"
+      }
+    },
+    "sum_age": {
+      "sum": {
+        "field": "age"
+      }
+    }
+  }
+}
+
+#一共（cardinality）有多少种工作
+GET test_search_index/_search
+{
+  "size":0,
+  "aggs":{
+    "count_of_job":{
+      "cardinality": {
+        "field": "job.keyword"
+      }
+    }
+  }
+}
+
+# 使用 stats 把基本统计值均算出来
+GET test_search_index/_search
+{
+  "size":0,
+  "aggs":{
+    "stats_age":{
+      "stats": {
+        "field": "age"
+      }
+    }
+  }
+}
+
+# 使用 extended_stats 把扩展（所有）统计值均算出来
+GET test_search_index/_search
+{
+  "size": 0,
+  "aggs": {
+    "extended_salary": {
+      "extended_stats": {
+        "field": "salary"
+      }
+    }
+  }
+}
+
+# 使用 percentiles 进行百分位数统计，反映的数据的分布情况,例如25%的人工资在8000元及以下
+GET test_search_index/_search
+{
+  "size": 0,
+  "aggs": {
+    "per_salary": {
+      "percentiles": {
+        "field": "salary"
+      }
+    }
+  }
+}
+
+GET test_search_index/_search
+{
+  "size": 0,
+  "aggs": {
+    "per_salary": {
+      "percentiles": {
+        "field": "salary",
+        "percents": [
+          95,
+          99,
+          99.9
+        ]
+      }
+    }
+  }
+}
+
+GET test_search_index/_search
+{
+  "size": 0,
+  "aggs": {
+    "per_salary": {
+      "percentile_ranks": {
+        "field": "salary",
+        "values": [
+            11000,
+            30000
+          ]
+      }
+    }
+  }
+}
+
+# 首先按照工作进行分组，然后每组内按照年龄倒序排列（从大到小）
+GET test_search_index/_search
+{
+  "size": 0,
+  "aggs": {
+    "jobs": {
+      "terms": {
+        "field": "job.keyword",
+        "size": 10
+      },
+      "aggs": {
+        "top_employee": {
+          "top_hits": {
+            "size": 10,
+            "sort": [
+              {
+                "age": {
+                  "order": "desc"
+                }
+              }
+            ]
+          }
+        }
+      }
+    }
+  }
+}
+
+# bucket
+# 使用 terms 进行分组统计，没个工作岗位有几人
+GET test_search_index/_search
+{
+  "size": 0,
+  "aggs": {
+    "jobs": {
+      "terms": {
+        "field": "job.keyword",
+        "size": 5
+      }
+    }
+  }
+}
+
+#使用 range 进行范围统计 from > to < 用 key 可以指定显示的键名 
+GET test_search_index/_search
+{
+  "size": 0,
+  "aggs": {
+    "salary_range": {
+      "range": {
+        "field": "salary",
+        "ranges": [
+          {
+            "key":"<10000",
+            "to": 10000
+          },
+          {
+            "from": 10000,
+            "to": 20000
+          },
+          {
+            "key":">20000",
+            "from": 20000
+          }
+        ]
+      }
+    }
+  }
+}
+
+# 对日期(date_range)进行范围查询的时候可以使用 format 指定日期的格式化
+GET test_search_index/_search
+{
+  "size": 0,
+  "aggs": {
+    "date_range": {
+      "range": {
+        "field": "birth",
+        "format": "yyyy",
+        "ranges": [
+          {
+            "from":"1980",
+            "to": "1990"
+          },
+          {
+            "from": "1990",
+            "to": "2000"
+          },
+          {
+            "from": "2000"
+          }
+        ]
+      }
+    }
+  }
+}
+
+# 使用 histogram 进行范围区间的查询，即统计每个区间内的数量，（直方图），interval设置步长，extended_bounds设置区间总范围
+GET test_search_index/_search
+{
+  "size": 0,
+  "aggs": {
+    "salary_hist": {
+      "histogram": {
+        "field": "salary",
+        "interval": 5000,
+        "extended_bounds": {
+          "min": 0,
+          "max": 40000
+        }
+      }
+    }
+  }
+}
+
+# 与range 类似 对于 日期的直方图（histogram）可以使用 date_histogram
+GET test_search_index/_search
+{
+  "size": 0,
+  "aggs": {
+    "by_year": {
+      "date_histogram": {
+        "field": "birth",
+        "interval": "year",
+        "format": "yyyy"
+      }
+    }
+  }
+}
+
+
+# bucket more 分桶后再分桶 首先按照 工作进行分组，然后统计每个工作的人员的数量分布情况
+GET test_search_index/_search
+{
+  "size": 0,
+  "aggs": {
+    "jobs": {
+      "terms": {
+        "field": "job.keyword",
+        "size": 10
+      },
+      "aggs": {
+        "age_range": {
+          "range": {
+            "field": "age",
+            "ranges": [
+              {
+                "to": 20
+              },
+              {
+                "from": 20,
+                "to": 30
+              },
+              {
+                "from": 30
+              }
+            ]
+          }
+        }
+      }
+    }
+  }
+}
+
+#metric和bucket可以和在一起使用
+GET test_search_index/_search
+{
+  "size": 0,
+  "aggs": {
+    "jobs": {
+      "terms": {
+        "field": "job.keyword",
+        "size": 10
+      },
+      "aggs": {
+        "age-stats": {
+          "stats": {
+            "field": "age"
+          }
+        }
+      }
+    }
+  }
+}
+
+#sibling 找出bucket中最小的bucket的名称和值
+GET test_search_index/_search
+{
+  "size": 0,
+  "aggs": {
+    "jobs": {
+      "terms": {
+        "field": "job.keyword",
+        "size": 10
+      },
+      "aggs": {
+        "avg_salary": {
+          "avg": {
+            "field": "salary"
+          }
+        }
+      }
+    },
+    "min_salary_by_job":{
+      "min_bucket":{
+        "buckets_path":"jobs>avg_salary"
+      }
+    }
+  }
+}
+
+#parent 求导 derivative
+GET test_search_index/_search
+{
+  "size": 0,
+  "aggs": {
+    "birth": {
+      "date_histogram": {
+        "field": "birth",
+        "interval": "year",
+        "min_doc_count": 0
+      },
+      "aggs": {
+        "avg_salary": {
+          "avg": {
+            "field": "salary"
+          }
+        },
+        "derivative_avg_salary": {
+          "derivative": {
+            "buckets_path": "avg_salary"
+          }
+        }
+      }
+    }
+  }
+}
+
+# 移动平均值moving_avg
+GET test_search_index/_search
+{
+  "size": 0,
+  "aggs": {
+    "birth": {
+      "date_histogram": {
+        "field": "birth",
+        "interval": "year",
+        "min_doc_count": 0
+      },
+      "aggs": {
+        "avg_salary": {
+          "avg": {
+            "field": "salary"
+          }
+        },
+        "mavg_salary": {
+          "moving_avg": {
+            "buckets_path": "avg_salary"
+          }
+        }
+      }
+    }
+  }
+}
+
+# 累计加和 cumulative_sum
+GET test_search_index/_search
+{
+  "size": 0,
+  "aggs": {
+    "birth": {
+      "date_histogram": {
+        "field": "birth",
+        "interval": "year",
+        "min_doc_count": 0
+      },
+      "aggs": {
+        "avg_salary": {
+          "avg": {
+            "field": "salary"
+          }
+        },
+        "cumulative_salary": {
+          "cumulative_sum": {
+            "buckets_path": "avg_salary"
+          }
+        }
+      }
+    }
+  }
+}
+
+
+# scope es聚合分析默认的作用范围是query的结果集，可以通过 filter post_filter globalgaib
+GET test_search_index/_search
+{
+  "size":0,
+  "aggs":{
+    "jobs":{
+      "terms": {
+        "field": "job.keyword",
+        "size": 10
+      }
+    }
+  }
+}
+
+GET test_search_index/_search
+{
+  "size":10,
+  "query":{
+    "match": {
+      "username": "alfred"
+    }
+  },
+  "aggs":{
+    "jobs":{
+      "terms": {
+        "field": "job.keyword",
+        "size": 10
+      }
+    }
+  }
+}
+
+
+# filter
+GET test_search_index/_search
+{
+  "size": 0,
+  "aggs": {
+    "jobs_salary_small": {
+      "filter": {
+        "range": {
+          "salary": {
+            "to": 10000
+          }
+        }
+      },
+      "aggs": {
+        "jobs": {
+          "terms": {
+            "field": "job.keyword"
+          }
+        }
+      }
+    },
+    "jobs": {
+      "terms": {
+        "field": "job.keyword"
+      }
+    }
+  }
+}
+
+
+#post-filter 聚合分析之后再对文档进行过滤
+GET test_search_index/_search
+{
+  "aggs": {
+    "jobs": {
+      "terms": {
+        "field": "job.keyword"
+      }
+    }
+  },
+  "post_filter": {
+    "match":{
+      "job.keyword":"java engineer"
+    }
+  }
+}
+
+#global 无视query过滤条件，基于全部文档进行分析
+GET test_search_index/_search
+{
+  "query": {
+    "match": {
+      "job.keyword": "java engineer"
+    }
+  },
+  "aggs": {
+    "java_avg_salary": {
+      "avg": {
+        "field": "salary"
+      }
+    },
+    "all": {
+      "global": {},
+      "aggs": {
+        "avg_salary": {
+          "avg": {
+            "field": "salary"
+          }
+        }
+      }
+    }
+  }
+}
+
+
+#sort 通过terms分桶后使用size指定返回桶的数量
+GET test_search_index/_search
+{
+  "size": 0,
+  "aggs": {
+    "jobs": {
+      "terms": {
+        "field": "job.keyword",
+        "size": 10
+      }
+    }
+  }
+}
+
+#对于分桶后还可以使用 order 参数借助其它聚合指标进行排序，例如本本例中同时对工作进行分桶，对工资求平均值，然后按照平均值的大小对每种工作进行排序
+GET test_search_index/_search
+{
+  "size": 0,
+  "aggs": {
+    "jobs": {
+      "terms": {
+        "field": "job.keyword",
+        "size": 10,
+        "order": [
+          {
+            "avg_salary": "desc"
+          }
+        ]
+      },
+      "aggs": {
+        "avg_salary": {
+          "avg": {
+            "field": "salary"
+          }
+        }
+      }
+    }
+  }
+}
+
+#除了可以按照平均值排序之外当然也可以按照其它状态值进行排序
+GET test_search_index/_search
+{
+  "size": 0,
+  "aggs": {
+    "jobs": {
+      "terms": {
+        "field": "job.keyword",
+        "size": 10,
+        "order": [
+          {
+            "stats_salary.sum": "desc"
+          }
+        ]
+      },
+      "aggs": {
+        "stats_salary": {
+          "stats": {
+            "field": "salary"
+          }
+        }
+      }
+    }
+  }
+}
+
+#当然也可以在分桶之前先使用filter进行过滤
+GET test_search_index/_search
+{
+  "size": 0,
+  "aggs": {
+    "salary_hist": {
+      "terms": {
+        "field": "job.keyword",
+        "order": {
+          "age>avg_age": "desc"
+        }
+      },
+      "aggs": {
+        "age": {
+          "filter": {
+            "range": {
+              "age": {
+                "gte": 20
+              }
+            }
+          },
+          "aggs": {
+            "avg_age": {
+              "avg": {
+                "field": "age"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+
+GET test_search_index/_search
+{
+  "size": 0,
+  "aggs": {
+    "salary_hist": {
+      "histogram": {
+        "field": "salary",
+        "interval": 5000,
+        "order": {
+          "age>avg_age": "desc"
+        }
+      },
+      "aggs": {
+        "age": {
+          "filter": {
+            "range": {
+              "age": {
+                "gte": 20
+              }
+            }
+          },
+          "aggs": {
+            "avg_age": {
+              "avg": {
+                "field": "age"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
